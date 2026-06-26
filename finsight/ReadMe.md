@@ -5,7 +5,7 @@ FinSight is a personal finance project developed using Spring Boot and PostgreSQ
 Features-
 
 User Management
-Transaction Management
+ransaction Management
 Budget Management
 Financial Advisor
 
