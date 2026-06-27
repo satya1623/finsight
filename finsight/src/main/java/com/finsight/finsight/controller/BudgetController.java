@@ -6,8 +6,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
+
 @RestController
 @RequestMapping("/budget")
+@CrossOrigin(origins = "http://localhost:5173")
 public class BudgetController {
 
     private final BudgetRepository budgetRepository;
@@ -24,5 +27,10 @@ public class BudgetController {
     @GetMapping
     public List<Budget> getAllBudgets() {
         return budgetRepository.findAll();
+    }
+
+    @GetMapping("/{id}")
+    public Budget getBudgetById(@PathVariable Long id) {
+        return budgetRepository.findById(id).orElse(null);
     }
 }
