@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 @RestController
 @RequestMapping("/budget")
 @CrossOrigin(origins = "http://localhost:5173")
+
+
 public class BudgetController {
 
     private final BudgetRepository budgetRepository;
@@ -32,5 +34,22 @@ public class BudgetController {
     @GetMapping("/{id}")
     public Budget getBudgetById(@PathVariable Long id) {
         return budgetRepository.findById(id).orElse(null);
+    }
+
+    @PutMapping("/{id}")
+    public Budget updateBudget(@PathVariable Long id,
+                               @RequestBody Budget updatedBudget) {
+
+        Budget budget = budgetRepository.findById(id).orElseThrow();
+
+        budget.setMonthlyIncome(updatedBudget.getMonthlyIncome());
+        budget.setMonthlyExpenses(updatedBudget.getMonthlyExpenses());
+        budget.setCurrentSavings(updatedBudget.getCurrentSavings());
+        budget.setEmergencyFund(updatedBudget.getEmergencyFund());
+        budget.setMonthlyEmi(updatedBudget.getMonthlyEmi());
+        budget.setUpcomingBills(updatedBudget.getUpcomingBills());
+        budget.setFinancialGoal(updatedBudget.getFinancialGoal());
+
+        return budgetRepository.save(budget);
     }
 }

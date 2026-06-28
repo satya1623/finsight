@@ -44,60 +44,50 @@ public class AiServices {
                 response.setAnswer("Budget not found.");
                 return response;
             }
-            if (!isFinancialQuestion(request.getQuestion())) {
-
-                response.setAnswer("""
-hi , FinSight helps users make financial decisions.
-
-Try asking:
-
-- Can I afford a ₹70,000 laptop?
-- Should I lend ₹30,000 to my friend?
-- Should I take a ₹2 lakh education loan?
-""");
-
-                return response;
-            }
+            String question = request.getQuestion()
+                    .replaceAll("(?i)\\b(\\d+)\\s*rs\\b", "₹$1")
+                    .replaceAll("(?i)\\b(\\d+)\\s*rupees\\b", "₹$1")
+                    .trim();
 
             String prompt =
-                    "You are FinSight AI, a smart personal financial assistant.\n\n" +
+                    """
+                    You are FinSight AI, a helpful personal financial assistant.
+                    
+                    User Financial Profile:
+                    Monthly Income: ₹""" + budget.getMonthlyIncome() + """
+Monthly Expenses: ₹""" + budget.getMonthlyExpenses() + """
+Current Savings: ₹""" + budget.getCurrentSavings() + """
+Emergency Fund: ₹""" + budget.getEmergencyFund() + """
+Monthly EMI: ₹""" + budget.getMonthlyEmi() + """
+Upcoming Bills: ₹""" + budget.getUpcomingBills() + """
+Financial Goal: """ + budget.getFinancialGoal() + """
 
-                            "User Financial Profile:\n" +
-                            "Monthly Income: ₹" + budget.getMonthlyIncome() + "\n" +
-                            "Monthly Expenses: ₹" + budget.getMonthlyExpenses() + "\n" +
-                            "Current Savings: ₹" + budget.getCurrentSavings() + "\n" +
-                            "Emergency Fund: ₹" + budget.getEmergencyFund() + "\n" +
-                            "Monthly EMI: ₹" + budget.getMonthlyEmi() + "\n" +
-                            "Upcoming Bills: ₹" + budget.getUpcomingBills() + "\n" +
-                            "Financial Goal: " + budget.getFinancialGoal() + "\n\n" +
+User Question:
+""" + request.getQuestion() + """
 
-                            "User Question:\n" +
-                            request.getQuestion() + "\n\n" +
-
-                            "Rules:\n" +
-
-                            "1. If the user greets you (Hi, Hello, Hey), greet them warmly and ask how you can help with their finances.\n" +
-
-                            "2. If the question is NOT related to finance, politely reply that FinSight AI only provides financial guidance.\n" +
-
-                            "3. If the question IS about finance, use ONLY the financial profile above to answer.\n" +
-
-                            "4. For financial questions, answer exactly in this format:\n\n" +
-
-                            "Recommendation:\n" +
-                            "<one sentence>\n\n" +
-
-                            "Reason:\n" +
-                            "<maximum two sentences>\n\n" +
-
-                            "Suggestion:\n" +
-                            "<one sentence>\n\n" +
-
-                            "5. Maximum 120 words.\n" +
-                            "6. Don't use Markdown.\n" +
-                            "7. Don't mention Gemini or Google.\n" +
-                            "8. Be practical, friendly and concise.";
-
+                            Instructions:
+                            
+                                                      1. Read the user's question FIRST.
+                            
+                                                      2. Answer the user's question directly.
+                            
+                                                      3. Use the financial profile ONLY if it is required to answer the question.
+                            
+                                                      Examples:
+                            
+                                                      Question: Can I give ₹200 to my friend?
+                                                      Answer: Yes, you can. Whether it's a good idea depends on your relationship and whether you're comfortable lending the money. If you're asking whether you can afford it, then use the financial profile.
+                            
+                                                      Question: Can I afford a ₹70,000 laptop?
+                                                      Answer: Use the financial profile.
+                            
+                                                      Question: What is SIP?
+                                                      Answer: Explain SIP without using the profile.
+                            
+                                                      Never analyze the user's financial profile unless the question asks for affordability, budgeting, loans, savings, investments, or financial planning.
+                            
+                                                      Keep the answer under 120 words.
+""";
             Map<String, Object> body = Map.of(
                     "contents", List.of(
                             Map.of(
@@ -108,13 +98,26 @@ Try asking:
                     )
             );
 
-            String result = webClient.post()
-                    .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            String result = "";
+
+            try {
+
+                result = webClient.post()
+                        .uri("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+
+            } catch (Exception e) {
+
+                e.printStackTrace();
+                response.setAnswer("FinSight AI is temporarily unavailable. Please try again later.");
+                return response;
+
+            }
+
 
             try {
 
@@ -151,12 +154,53 @@ Try asking:
         String q = question.toLowerCase();
 
         String[] keywords = {
-                "loan", "emi", "buy", "purchase", "afford",
-                "lend", "borrow", "money", "salary", "income",
-                "expense", "expenses", "saving", "savings",
-                "budget", "investment", "invest", "car",
-                "bike", "laptop", "phone", "credit",
-                "debt", "bill", "bills", "finance"
+
+                // General Finance
+                "finance","financial","money","cash","currency","rupee","rupees","rs","₹",
+
+                // Income
+                "income","salary","wage","bonus","earning","earn","profit","revenue",
+
+                // Spending
+                "expense","expenses","spend","spending","cost","price","purchase","buy","sell",
+                "shopping","order","payment","pay","paid","checkout",
+
+                // Saving
+                "save","saving","savings","emergency fund","budget","balance","reserve",
+
+                // Banking
+                "bank","banking","account","upi","wallet","paytm","phonepe","gpay",
+                "google pay","debit","credit","atm","net banking","transfer",
+                "send","receive","deposit","withdraw","withdrawal","transaction",
+
+                // Loans
+                "loan","borrow","lend","emi","interest","principal","repay",
+                "repayment","debt","credit score","cibil","mortgage",
+
+                // Investments
+                "invest","investment","sip","mutual fund","stock","stocks","share",
+                "shares","equity","gold","silver","fd","fixed deposit","rd",
+                "crypto","bitcoin","bond","bonds","etf","portfolio","returns","dividend",
+
+                // Bills
+                "bill","bills","rent","electricity","water","gas","internet","wifi",
+                "recharge","subscription","insurance","premium","tax","gst",
+
+                // Affordability
+                "afford","affordable","worth","cheap","expensive","value","discount","offer",
+
+                // Assets
+                "car","bike","laptop","phone","mobile","house","home","flat","property",
+                "education","college","fees","tuition",
+
+                // Business
+                "business","startup","company","invoice","payment gateway",
+
+                // Retirement
+                "pension","retirement","pf","epf","ppf","nps",
+
+                // Misc
+                "refund","cashback","reward","points","coupon","voucher","allowance"
         };
 
         for (String keyword : keywords) {
